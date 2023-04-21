@@ -1,7 +1,22 @@
 (ns pg-copy-binary.core
   (:import
+   java.util.Date
+
+   java.time.Instant
+   java.time.Duration
+   java.time.LocalDate
+   java.time.LocalTime
+   java.time.ZoneOffset
+
    java.io.OutputStream)
   (:gen-class))
+
+
+(def ^Duration PG_EPOCH_DIFF
+  (Duration/between Instant/EPOCH
+                    (-> (LocalDate/of 2000 1 1)
+                        (.atStartOfDay)
+                        (.toInstant ZoneOffset/UTC))))
 
 
 (defn arr16 ^bytes [value]
@@ -87,6 +102,33 @@
   (-bytes [this]
     (-bytes (-> this str (subs 1))))
 
+  LocalDate
+
+  (-bytes [this]
+    (arr32
+     (-
+      (.toEpochDay this)
+      (.toDays PG_EPOCH_DIFF))))
+
+  LocalTime
+
+  (-bytes [this]
+    (arr64 (quot (.toNanoOfDay this) 1000)))
+
+  Instant
+  (-bytes [this]
+    (arr64
+     (+
+      (* (- (.getEpochSecond this)
+            (.toSeconds PG_EPOCH_DIFF))
+         1000 1000)
+      (.getNano this))))
+
+  Date
+
+  (-bytes [this]
+    (-bytes (.toInstant this)))
+
   Boolean
 
   (-bytes [this]
@@ -132,6 +174,10 @@
 
 
 (def table
+
+  [[(new Date) #_(Instant/now)]]
+
+  #_
   [[1 "AFGHANISTAN" nil]
    [2 "ALBANIA" false]
    [3 "ALGERIA" true]]
