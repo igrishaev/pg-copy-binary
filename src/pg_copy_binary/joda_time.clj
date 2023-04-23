@@ -1,4 +1,4 @@
-(ns foo
+(ns pg-copy-binary.joda-time
   (:require
    [pg-copy-binary.core :as core])
   (:import
