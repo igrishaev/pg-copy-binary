@@ -1,0 +1,34 @@
+   java.util.TimeZone
+   java.time.ZoneId
+   java.time.ZonedDateTime
+
+
+  ZonedDateTime
+
+  (-bytes [this]
+
+    (let [zone-id
+          (.getZone this)
+
+          tz
+          (TimeZone/getTimeZone zone-id)
+
+          offset
+          (.getRawOffset tz)
+
+          ;; seconds
+          ;; (- (.getEpochSecond this)
+          ;;    (.toSeconds PG_EPOCH_DIFF))
+
+          ;; nanos
+          ;; (.getNano this)
+
+          ]
+
+      #_
+      (arr64
+       (+ (* seconds 1000 1000)
+          (.getNano this)))))
+
+
+(.toDateTime DateTimeZone/UTC)
