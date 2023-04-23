@@ -1,14 +1,19 @@
 (ns pg-copy-binary.core
   (:import
    java.util.Date
+   java.util.UUID
 
+   java.time.ZonedDateTime ;;
    java.time.Instant
    java.time.Duration
    java.time.LocalDate
    java.time.LocalTime
    java.time.ZoneOffset
 
-   java.io.OutputStream)
+   java.io.InputStream
+   java.io.ByteArrayOutputStream
+   java.io.OutputStream
+   java.io.Writer)
   (:gen-class))
 
 
@@ -102,6 +107,21 @@
   (-bytes [this]
     (-bytes (-> this str (subs 1))))
 
+  UUID
+
+  (-bytes [this]
+
+    (let [most-bits
+          (.getMostSignificantBits this)
+
+          least-bits
+          (.getLeastSignificantBits this)]
+
+      (byte-array
+       (-> []
+           (into (arr64 most-bits))
+           (into (arr64 least-bits))))))
+
   LocalDate
 
   (-bytes [this]
@@ -116,6 +136,7 @@
     (arr64 (quot (.toNanoOfDay this) 1000)))
 
   Instant
+
   (-bytes [this]
     (arr64
      (+
@@ -138,6 +159,11 @@
             false 0)]
       (byte-array [b])))
 
+  Short
+
+  (-bytes [this]
+    (arr16 this))
+
   Integer
 
   (-bytes [this]
@@ -153,7 +179,13 @@
 
   (-bytes [this]
     (-> (Float/floatToIntBits this)
-        (arr32))))
+        (arr32)))
+
+  Double
+
+  (-bytes [this]
+    (-> (Double/longBitsToDouble this)
+        (arr64))))
 
 
 (defn write [table ^OutputStream out]
@@ -171,6 +203,23 @@
           (.write out buf)))))
   (.write out (arr16 -1))
   (.close out))
+
+
+(defn row->bytes [row]
+  (let [out (new ByteArrayOutputStream)]
+    (doseq [item row]
+      (if (nil? item)
+        (.write out (arr32 -1))
+        (let [buf (-bytes item)]
+          (.write out (arr32 (alength buf)))
+          (.write out buf))))
+    (.toByteArray out)))
+
+
+(defn write-seq [table]
+  (let [[row & rows] table]
+    (when row
+      (lazy-cat (row->bytes row) (write-seq rows)))))
 
 
 (def table
@@ -191,10 +240,40 @@
 
 
 #_
-(write table
-       (-> "out.bin"
-           clojure.java.io/file
-           clojure.java.io/output-stream))
+(def big-table
+  (for [x (range 1 (* 1000 1000))]
+    [x (format "%20d" x) (> (rand) 0.5)]))
+
+#_
+(def result
+  (write big-table
+         (-> "out.bin"
+             clojure.java.io/file
+             clojure.java.io/output-stream)))
+
+#_
+(def result
+  (write-csv big-table
+             (-> "out.csv"
+                 clojure.java.io/file
+                 clojure.java.io/writer)))
+
+
+(defn write-csv [table ^Writer out]
+  (doseq [row table]
+    (.write out (->> row
+                     (map str)
+                     (clojure.string/join ",")))
+    (.write out "\n"))
+  (.close out))
+
+
+(defn ->input-stream [table]
+  (proxy [InputStream] []
+    (read [^bytes buf]
+      (println buf)
+      42)))
+
 
 
 (defn -main

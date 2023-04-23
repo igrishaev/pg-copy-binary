@@ -6,5 +6,8 @@
   :dependencies [[org.clojure/clojure "1.11.1"]]
   :main ^:skip-aot pg-copy-binary.core
   :target-path "target/%s"
-  :profiles {:uberjar {:aot :all
-                       :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}})
+
+  :profiles
+  {:dev
+   {:dependencies
+    [[joda-time/joda-time "2.12.5"]]}})
